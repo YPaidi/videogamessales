@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Video Game Industry Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
+            --text-light: #e0e0e0;
+            --text-dim: #9e9e9e;
+            --accent: #bb86fc;
+            --accent-hover: #9c27b0;
+            --na-color: #03dac6;
+            --eu-color: #ff9800;
+            --jp-color: #cf6679;
+            --global-color: #bb86fc;
+            --border: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .btn {
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background-color: transparent;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--accent);
+            color: var(--bg-dark);
+        }
+
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Main Layout */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 4px;
+            outline: none;
+            height: 120px;
+        }
+
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        input[type=range] {
+            width: 100%;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* KPIs */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+        }
+
+        .kpi-title {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-container {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 15px;
+            min-height: 350px;
+        }
+
+        .chart-container.full-width {
+            grid-column: span 2;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--text-light);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        /* Insights Panel */
+        .insights-panel {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            margin-top: 10px;
+        }
+
+        .insight-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .insight-item {
+            background-color: var(--bg-dark);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .insight-item strong {
+            color: var(--accent);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Loading Overlay */
+        #loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(18, 18, 18, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            font-size: 1.5rem;
+            color: var(--accent);
+            display: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #555; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent); 
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Global Video Game Market Intelligence</h1>
+        <div class="upload-btn-wrapper">
+            <button class="btn" id="upload-btn-text">Upload Dataset (CSV)</button>
+            <input type="file" id="csvFileInput" accept=".csv" />
+        </div>
+    </header>
+
+    <div id="loading">Analyzing Dataset...</div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="filter-group slider-container">
+                <label>Timeline Range (<span id="year-display">All</span>)</label>
+                <div class="slider-labels">
+                    <span id="year-min-label">1980</span>
+                    <span id="year-max-label">2024</span>
+                </div>
+                <input type="range" id="year-min" min="1980" max="2024" value="1980">
+                <input type="range" id="year-max" min="1980" max="2024" value="2024">
+            </div>
+
+            <div class="filter-group">
+                <label for="genreFilter">Genre (Multi-Select)</label>
+                <select id="genreFilter" multiple></select>
+            </div>
+
+            <div class="filter-group">
+                <label for="platformFilter">Platform (Multi-Select)</label>
+                <select id="platformFilter" multiple></select>
+            </div>
+
+            <div class="filter-group">
+                <label for="publisherFilter">Publisher (Multi-Select)</label>
+                <select id="publisherFilter" multiple></select>
+            </div>
+            
+            <button class="btn" id="resetBtn" style="margin-top: 10px;">Reset Filters</button>
+        </div>
+
+        <div class="main-content">
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Global Sales (M)</div>
+                    <div class="kpi-value" id="kpi-total-sales">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Top Genre</div>
+                    <div class="kpi-value" id="kpi-top-genre">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Top Platform</div>
+                    <div class="kpi-value" id="kpi-top-platform">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Leading Publisher</div>
+                    <div class="kpi-value" id="kpi-top-publisher">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Best-Selling Game</div>
+                    <div class="kpi-value" id="kpi-best-game" style="font-size:1.1rem; line-height: 1.5rem; white-space: normal;">-</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container full-width">
+                    <div class="chart-title">Global Industry Growth & Regional Distribution</div>
+                    <div id="chart-growth" style="height: 350px;"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Platform Lifecycle Analysis</div>
+                    <div id="chart-platform" style="height: 350px;"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Review Scores vs Commercial Success</div>
+                    <div id="chart-scatter" style="height: 350px;"></div>
+                </div>
+
+                <div class="chart-container full-width">
+                    <div class="chart-title">Genre Evolution Heatmap (Global Sales M)</div>
+                    <div id="chart-heatmap" style="height: 400px;"></div>
+                </div>
+
+                <div class="chart-container full-width">
+                    <div class="chart-title">Regional Preference Analysis</div>
+                    <div id="chart-regional" style="height: 350px;"></div>
+                </div>
+            </div>
+
+            <div class="insights-panel">
+                <div class="chart-title" style="color: var(--accent); border-bottom: none;">Automated Strategic Insights</div>
+                <ul class="insight-list" id="insights-container">
+                    <li class="insight-item">Please upload a dataset to generate insights.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let rawData = [];
+        let filteredData = [];
+        let state = {
+            minYear: 1980,
+            maxYear: 2024,
+            genres: [],
+            platforms: [],
+            publishers: []
+        };
+
+        const config = { responsive: true, displayModeBar: false };
+        const layoutBase = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#e0e0e0', family: 'Segoe UI' },
+            margin: { t: 10, l: 50, r: 20, b: 40 },
+            xaxis: { gridcolor: '#333', zerolinecolor: '#444' },
+            yaxis: { gridcolor: '#333', zerolinecolor: '#444' }
+        };
+
+        // --- DOM Elements ---
+        const fileInput = document.getElementById('csvFileInput');
+        const uploadBtnText = document.getElementById('upload-btn-text');
+        const loading = document.getElementById('loading');
+        
+        // Filters
+        const yearMin = document.getElementById('year-min');
+        const yearMax = document.getElementById('year-max');
+        const genreFilter = document.getElementById('genreFilter');
+        const platformFilter = document.getElementById('platformFilter');
+        const publisherFilter = document.getElementById('publisherFilter');
+        
+        // --- Event Listeners ---
+        fileInput.addEventListener('change', handleFileUpload);
+        yearMin.addEventListener('input', handleFilterChange);
+        yearMax.addEventListener('input', handleFilterChange);
+        genreFilter.addEventListener('change', handleFilterChange);
+        platformFilter.addEventListener('change', handleFilterChange);
+        publisherFilter.addEventListener('change', handleFilterChange);
+        document.getElementById('resetBtn').addEventListener('click', resetFilters);
+
+        // --- Data Loading & Parsing ---
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            loading.style.display = 'flex';
+            uploadBtnText.textContent = file.name;
+
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                }
+            });
+        }
+
+        function processData(data) {
+            // Clean and normalize data
+            rawData = data.filter(row => row.Year && row.Global && row['Game Title']).map(row => {
+                // Handle naming variations in column
+                let rest = row['Rest of World'] !== undefined ? row['Rest of World'] : (row['Rest of Wo'] || 0);
+                let na = row['North America'] !== undefined ? row['North America'] : (row['North Ame'] || 0);
+
+                return {
+                    Title: row['Game Title'] || row['Name'],
+                    Platform: row.Platform || 'Unknown',
+                    Year: parseInt(row.Year),
+                    Genre: row.Genre || 'Unknown',
+                    Publisher: row.Publisher || 'Unknown',
+                    NA: parseFloat(na) || 0,
+                    EU: parseFloat(row.Europe) || 0,
+                    JP: parseFloat(row.Japan) || 0,
+                    Rest: parseFloat(rest) || 0,
+                    Global: parseFloat(row.Global) || 0,
+                    Review: row.Review ? parseFloat(row.Review) : null
+                };
+            }).filter(row => !isNaN(row.Year));
+
+            initFilters();
+            applyFilters();
+            loading.style.display = 'none';
+        }
+
+        // --- Filtering Logic ---
+        function initFilters() {
+            let years = [...new Set(rawData.map(d => d.Year))].sort((a,b) => a-b);
+            let genres = [...new Set(rawData.map(d => d.Genre))].sort();
+            let platforms = [...new Set(rawData.map(d => d.Platform))].sort();
+            
+            // Get top 100 publishers by frequency to prevent UI lockup
+            let pubCounts = {};
+            rawData.forEach(d => pubCounts[d.Publisher] = (pubCounts[d.Publisher] || 0) + 1);
+            let publishers = Object.keys(pubCounts).sort((a,b) => pubCounts[b] - pubCounts[a]).slice(0, 100).sort();
+
+            // Set sliders
+            let minY = Math.min(...years);
+            let maxY = Math.max(...years);
+            
+            yearMin.min = minY; yearMin.max = maxY; yearMin.value = minY;
+            yearMax.min = minY; yearMax.max = maxY; yearMax.value = maxY;
+            document.getElementById('year-min-label').textContent = minY;
+            document.getElementById('year-max-label').textContent = maxY;
+
+            populateSelect(genreFilter, genres);
+            populateSelect(platformFilter, platforms);
+            populateSelect(publisherFilter, publishers);
+        }
+
+        function populateSelect(selectElem, options) {
+            selectElem.innerHTML = '';
+            options.forEach(opt => {
+                let el = document.createElement('option');
+                el.value = opt; el.textContent = opt;
+                selectElem.appendChild(el);
+            });
+        }
+
+        function getSelectValues(select) {
+            let result = [];
+            let options = select && select.options;
+            let opt;
+            for (let i=0, iLen=options.length; i<iLen; i++) {
+                opt = options[i];
+                if (opt.selected) result.push(opt.value || opt.text);
+            }
+            return result;
+        }
+
+        function handleFilterChange() {
+            let valMin = parseInt(yearMin.value);
+            let valMax = parseInt(yearMax.value);
+            if (valMin > valMax) {
+                let temp = valMin;
+                yearMin.value = valMax;
+                yearMax.value = temp;
+            }
+            
+            state.minYear = parseInt(yearMin.value);
+            state.maxYear = parseInt(yearMax.value);
+            document.getElementById('year-display').textContent = `${state.minYear} - ${state.maxYear}`;
+
+            state.genres = getSelectValues(genreFilter);
+            state.platforms = getSelectValues(platformFilter);
+            state.publishers = getSelectValues(publisherFilter);
+
+            applyFilters();
+        }
+
+        function resetFilters() {
+            initFilters();
+            genreFilter.selectedIndex = -1;
+            platformFilter.selectedIndex = -1;
+            publisherFilter.selectedIndex = -1;
+            handleFilterChange();
+        }
+
+        function applyFilters() {
+            filteredData = rawData.filter(d => {
+                if (d.Year < state.minYear || d.Year > state.maxYear) return false;
+                if (state.genres.length && !state.genres.includes(d.Genre)) return false;
+                if (state.platforms.length && !state.platforms.includes(d.Platform)) return false;
+                if (state.publishers.length && !state.publishers.includes(d.Publisher)) return false;
+                return true;
+            });
+
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            updateKPIs();
+            drawGrowthCurve();
+            drawPlatformLifecycle();
+            drawReviewScatter();
+            drawGenreHeatmap();
+            drawRegionalBars();
+            generateInsights();
+        }
+
+        // --- Aggregation Helpers ---
+        function aggregateBy(data, key, valKey = 'Global') {
+            let res = {};
+            data.forEach(d => {
+                res[d[key]] = (res[d[key]] || 0) + d[valKey];
+            });
+            return Object.entries(res).map(([k, v]) => ({ key: k, value: v })).sort((a,b) => b.value - a.value);
+        }
+
+        // --- KPIs ---
+        function updateKPIs() {
+            if(filteredData.length === 0) return;
+
+            let totalSales = filteredData.reduce((sum, d) => sum + d.Global, 0);
+            document.getElementById('kpi-total-sales').textContent = totalSales.toFixed(2);
+
+            let genres = aggregateBy(filteredData, 'Genre');
+            document.getElementById('kpi-top-genre').textContent = genres.length ? genres[0].key : '-';
+
+            let platforms = aggregateBy(filteredData, 'Platform');
+            document.getElementById('kpi-top-platform').textContent = platforms.length ? platforms[0].key : '-';
+
+            let publishers = aggregateBy(filteredData, 'Publisher');
+            document.getElementById('kpi-top-publisher').textContent = publishers.length ? publishers[0].key : '-';
+
+            let bestGame = filteredData.reduce((prev, current) => (prev.Global > current.Global) ? prev : current);
+            document.getElementById('kpi-best-game').textContent = `${bestGame.Title} (${bestGame.Global.toFixed(1)}M)`;
+        }
+
+        // --- Visualizations ---
+
+        // 1. Growth Curve
+        function drawGrowthCurve() {
+            let yearly = {};
+            filteredData.forEach(d => {
+                if(!yearly[d.Year]) yearly[d.Year] = {Global:0, NA:0, EU:0, JP:0};
+                yearly[d.Year].Global += d.Global;
+                yearly[d.Year].NA += d.NA;
+                yearly[d.Year].EU += d.EU;
+                yearly[d.Year].JP += d.JP;
+            });
+
+            let years = Object.keys(yearly).sort((a,b) => a-b);
+            
+            let traces = [
+                { x: years, y: years.map(y => yearly[y].Global), name: 'Global', type: 'scatter', mode: 'lines+markers', line: {color: 'var(--global-color)', width: 3} },
+                { x: years, y: years.map(y => yearly[y].NA), name: 'North America', type: 'scatter', mode: 'lines', line: {color: 'var(--na-color)'} },
+                { x: years, y: years.map(y => yearly[y].EU), name: 'Europe', type: 'scatter', mode: 'lines', line: {color: 'var(--eu-color)'} },
+                { x: years, y: years.map(y => yearly[y].JP), name: 'Japan', type: 'scatter', mode: 'lines', line: {color: 'var(--jp-color)'} }
+            ];
+
+            let layout = { ...layoutBase, legend: { orientation: 'h', y: -0.2 } };
+            Plotly.newPlot('chart-growth', traces, layout, config);
+        }
+
+        // 2. Platform Lifecycle (Stacked Area)
+        function drawPlatformLifecycle() {
+            let platforms = aggregateBy(filteredData, 'Platform').slice(0, 10).map(p => p.key); // Top 10 to avoid clutter
+            let years = [...new Set(filteredData.map(d => d.Year))].sort((a,b) => a-b);
+            
+            let platformData = {};
+            platforms.forEach(p => platformData[p] = new Array(years.length).fill(0));
+
+            filteredData.forEach(d => {
+                if(platforms.includes(d.Platform)) {
+                    let yIdx = years.indexOf(d.Year);
+                    platformData[d.Platform][yIdx] += d.Global;
+                }
+            });
+
+            let traces = platforms.map(p => ({
+                x: years,
+                y: platformData[p],
+                name: p,
+                type: 'scatter',
+                mode: 'lines',
+                stackgroup: 'one'
+            }));
+
+            Plotly.newPlot('chart-platform', traces, { ...layoutBase, showlegend: true }, config);
+        }
+
+        // 3. Review vs Sales Scatter
+        function drawReviewScatter() {
+            let dataWithReviews = filteredData.filter(d => d.Review !== null && d.Review > 0);
+            
+            let trace = {
+                x: dataWithReviews.map(d => d.Review),
+                y: dataWithReviews.map(d => d.Global),
+                text: dataWithReviews.map(d => `${d.Title} (${d.Year})<br>Platform: ${d.Platform}<br>Sales: ${d.Global}M`),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 8,
+                    color: dataWithReviews.map(d => d.Global),
+                    colorscale: 'Viridis',
+                    opacity: 0.7
+                }
+            };
+
+            let layout = { 
+                ...layoutBase, 
+                xaxis: { title: 'Review Score', gridcolor: '#333' },
+                yaxis: { title: 'Global Sales (M)', type: 'log', gridcolor: '#333' } // Log scale due to outliers like Wii Sports
+            };
+            Plotly.newPlot('chart-scatter', [trace], layout, config);
+        }
+
+        // 4. Genre Heatmap
+        function drawGenreHeatmap() {
+            let years = [...new Set(filteredData.map(d => d.Year))].sort((a,b) => a-b);
+            let genres = [...new Set(filteredData.map(d => d.Genre))].sort();
+
+            let zMatrix = genres.map(g => {
+                return years.map(y => {
+                    let sum = 0;
+                    filteredData.forEach(d => {
+                        if(d.Genre === g && d.Year === y) sum += d.Global;
+                    });
+                    return sum;
+                });
+            });
+
+            let trace = {
+                z: zMatrix,
+                x: years,
+                y: genres,
+                type: 'heatmap',
+                colorscale: 'Plasma'
+            };
+
+            Plotly.newPlot('chart-heatmap', [trace], { ...layoutBase, margin: { l: 100, r: 20, t: 10, b: 40 } }, config);
+        }
+
+        // 5. Regional Preference Analysis
+        function drawRegionalBars() {
+            let genres = aggregateBy(filteredData, 'Genre').slice(0, 10).map(g => g.key); // Top 10 genres
+
+            let na=[], eu=[], jp=[];
+            genres.forEach(g => {
+                let sumNA=0, sumEU=0, sumJP=0;
+                filteredData.filter(d => d.Genre === g).forEach(d => {
+                    sumNA += d.NA; sumEU += d.EU; sumJP += d.JP;
+                });
+                na.push(sumNA); eu.push(sumEU); jp.push(sumJP);
+            });
+
+            let traces = [
+                { x: genres, y: na, name: 'North America', type: 'bar', marker: {color: 'var(--na-color)'} },
+                { x: genres, y: eu, name: 'Europe', type: 'bar', marker: {color: 'var(--eu-color)'} },
+                { x: genres, y: jp, name: 'Japan', type: 'bar', marker: {color: 'var(--jp-color)'} }
+            ];
+
+            Plotly.newPlot('chart-regional', traces, { ...layoutBase, barmode: 'group', legend: { orientation: 'h', y: -0.2 } }, config);
+        }
+
+        // --- Insights Engine ---
+        function generateInsights() {
+            const container = document.getElementById('insights-container');
+            container.innerHTML = '';
+            
+            if(filteredData.length === 0) {
+                container.innerHTML = '<li class="insight-item">Not enough data for insights based on current filters.</li>';
+                return;
+            }
+
+            let insights = [];
+
+            // 1. Peak Year
+            let yearly = aggregateBy(filteredData, 'Year');
+            if(yearly.length > 0) {
+                insights.push(`<strong>Market Boom:</strong> The industry peaked in <span>${yearly[0].key}</span>, generating <span>${yearly[0].value.toFixed(2)}M</span> in global sales for the selected demographic.`);
+            }
+
+            // 2. Regional Dominance
+            let sumNA = filteredData.reduce((a,b)=>a+b.NA,0);
+            let sumEU = filteredData.reduce((a,b)=>a+b.EU,0);
+            let sumJP = filteredData.reduce((a,b)=>a+b.JP,0);
+            let dominantRegion = sumNA > sumEU && sumNA > sumJP ? 'North America' : (sumEU > sumJP ? 'Europe' : 'Japan');
+            insights.push(`<strong>Regional Dominance:</strong> <span>${dominantRegion}</span> is the primary driver of sales in this dataset segment, accounting for the highest volume of purchases.`);
+
+            // 3. Platform Wars
+            let platforms = aggregateBy(filteredData, 'Platform');
+            if(platforms.length > 1) {
+                insights.push(`<strong>Platform Leadership:</strong> The <span>${platforms[0].key}</span> established market dominance, outselling its closest competitor (<span>${platforms[1].key}</span>) by <span>${(platforms[0].value - platforms[1].value).toFixed(2)}M</span> units.`);
+            }
+
+            // 4. Critical vs Commercial anomaly
+            let dataWithReviews = filteredData.filter(d => d.Review !== null);
+            if(dataWithReviews.length > 0) {
+                // Find high sales but low review
+                let avgReview = dataWithReviews.reduce((sum, d) => sum + d.Review, 0) / dataWithReviews.length;
+                let highSalesLowReview = dataWithReviews.filter(d => d.Review < avgReview && d.Global > 5).sort((a,b) => b.Global - a.Global)[0];
+                
+                if(highSalesLowReview) {
+                    insights.push(`<strong>Commercial Anomaly:</strong> <span>${highSalesLowReview.Title}</span> achieved massive commercial success (<span>${highSalesLowReview.Global.toFixed(1)}M</span>) despite a below-average critical review score of <span>${highSalesLowReview.Review}</span>.`);
+                } else {
+                    let bestRated = dataWithReviews.reduce((prev, curr) => prev.Review > curr.Review ? prev : curr);
+                    insights.push(`<strong>Critical Acclaim:</strong> <span>${bestRated.Title}</span> holds the highest critical consensus with a score of <span>${bestRated.Review}</span>, correlating with <span>${bestRated.Global.toFixed(2)}M</span> sales.`);
+                }
+            }
+
+            insights.forEach(text => {
+                let li = document.createElement('li');
+                li.className = 'insight-item';
+                li.innerHTML = text;
+                container.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
